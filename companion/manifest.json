@@ -22,20 +22,26 @@
 		"entrypoint": "../dist/main.js"
 	},
 	"legacyIds": [],
-	"manufacturer": "NEC / Sharp NEC Display Solutions",
-	"products": [
-		"NP-PA series",
-		"NP-PX series",
-		"NP-PH series",
-		"NP-P series",
-		"NP-PE series",
-		"NP-M series",
-		"NP-ME series",
-		"NP-UM series",
-		"NP-U series",
-		"NP-V series",
-		"NP-VE series",
-		"NP4100"
-	],
-	"keywords": ["projector", "NEC", "Sharp NEC", "display", "AV", "HTTP"]
+	"manufacturer": "NEC",
+	"products": ["Projector"],
+	"keywords": [
+		"projector",
+		"NEC",
+		"Sharp NEC",
+		"display",
+		"AV",
+		"HTTP",
+		"NP-PA",
+		"NP-PX",
+		"NP-PH",
+		"NP-P",
+		"NP-M",
+		"NP-ME",
+		"NP-U",
+		"NP-UM",
+		"NP-V",
+		"NP-VE",
+		"NP4100",
+		"PA550W"
+	]
 }

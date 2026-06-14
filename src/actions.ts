@@ -3,8 +3,10 @@ import * as cmd from './nec/commands.js'
 import {
 	ASPECT_CHOICES,
 	AUDIO_SOURCES,
+	CUSTOM,
 	ECO_CHOICES,
 	INPUT_CHOICES,
+	INPUT_CODES,
 	LENS_DRIVE,
 	LENS_MEM_OPS,
 	LENS_PROFILES,
@@ -17,25 +19,23 @@ type OnOffToggle = 'on' | 'off' | 'toggle'
 
 export type ActionsSchema = {
 	power: { options: { mode: OnOffToggle } }
-	input_select: { options: { input: number | string; custom: string } }
+	input_select: { options: { input: string; custom: string } }
 	picture_mute: { options: { mode: OnOffToggle } }
 	sound_mute: { options: { mode: OnOffToggle } }
 	onscreen_mute: { options: { mode: OnOffToggle } }
 	freeze: { options: { mode: OnOffToggle } }
 	shutter: { options: { mode: 'open' | 'close' | 'toggle' } }
-	picture_adjust: { options: { item: number; adjustType: 'absolute' | 'relative'; value: number } }
-	volume_adjust: { options: { adjustType: 'absolute' | 'relative'; value: number } }
+	picture_adjust: { options: { item: number; adjustType: 'relative' | 'absolute'; value: number } }
+	volume_adjust: { options: { adjustType: 'relative' | 'absolute'; value: number } }
 	aspect: { options: { aspect: number | string; custom: string } }
 	eco_mode: { options: { eco: number | string; custom: string } }
 	remote_key: { options: { key: number } }
 	lens_control: { options: { target: number; drive: number } }
-	lens_control2: { options: { target: number; adjustType: 'absolute' | 'relative'; value: number } }
+	lens_control2: { options: { target: number; adjustType: 'relative' | 'absolute'; value: number } }
 	lens_memory: { options: { op: number } }
 	ref_lens_memory: { options: { op: number } }
 	lens_profile: { options: { profile: number } }
-	audio_select: {
-		options: { input: number | string; inputCustom: string; source: number | string; sourceCustom: string }
-	}
+	audio_select: { options: { input: string; inputCustom: string; source: number | string; sourceCustom: string } }
 	edge_blending: { options: { mode: 'on' | 'off' } }
 	pip_pbp: { options: { target: number; value: number } }
 	lan_name: { options: { name: string } }
@@ -49,11 +49,11 @@ const ON_OFF_TOGGLE = [
 ]
 
 const ADJUST_TYPE = [
-	{ id: 'relative', label: 'Relative (adjust by)' },
-	{ id: 'absolute', label: 'Absolute (set to)' },
+	{ id: 'relative', label: 'Adjust by (+ / −)' },
+	{ id: 'absolute', label: 'Set to (exact value)' },
 ]
 
-/** Parse a hex string like "1A", "0x1a" or "26" (hex) into a byte. */
+/** Parse a hex string like "1A", "0x1a" or "26" into a byte. */
 function parseHexByte(s: string): number {
 	const v = parseInt(String(s).trim().replace(/^0x/i, ''), 16)
 	return Number.isNaN(v) ? 0 : v & 0xff
@@ -71,7 +71,7 @@ function resolveOnOff(mode: OnOffToggle, current: boolean): boolean {
 export function UpdateActions(self: ModuleInstance): void {
 	self.setActionDefinitions({
 		power: {
-			name: 'Power — On / Off / Toggle',
+			name: 'Power On / Off',
 			options: [{ type: 'dropdown', id: 'mode', label: 'Action', default: 'on', choices: ON_OFF_TOGGLE }],
 			callback: async (e) => {
 				const on = resolveOnOff(e.options.mode, self.state.powered)
@@ -80,22 +80,34 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		input_select: {
-			name: 'Input — Select source',
+			name: 'Select Input',
 			options: [
-				{ type: 'dropdown', id: 'input', label: 'Input', default: 0x1a, choices: INPUT_CHOICES },
+				{
+					type: 'dropdown',
+					id: 'input',
+					label: 'Input',
+					default: 'hdmi1',
+					choices: INPUT_CHOICES,
+					disableAutoExpression: true,
+				},
 				{
 					type: 'textinput',
 					id: 'custom',
 					label: 'Custom input code (hex, e.g. 1A)',
 					default: '',
+					isVisibleExpression: `$(options:input) == '${CUSTOM}'`,
 				},
 			],
 			callback: async (e) => {
-				await self.sendCommand(cmd.inputSwitch(resolveCode(e.options.input, e.options.custom)), 'Input select')
+				if (e.options.input === CUSTOM) {
+					await self.selectInput(CUSTOM, [parseHexByte(e.options.custom)])
+				} else {
+					await self.selectInput(e.options.input, INPUT_CODES[e.options.input] ?? [])
+				}
 			},
 		},
 		picture_mute: {
-			name: 'Picture mute — On / Off / Toggle',
+			name: 'Mute Picture (blank the image)',
 			options: [{ type: 'dropdown', id: 'mode', label: 'Action', default: 'toggle', choices: ON_OFF_TOGGLE }],
 			callback: async (e) => {
 				const on = resolveOnOff(e.options.mode, self.state.pictureMute)
@@ -104,7 +116,7 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		sound_mute: {
-			name: 'Sound mute — On / Off / Toggle',
+			name: 'Mute Sound',
 			options: [{ type: 'dropdown', id: 'mode', label: 'Action', default: 'toggle', choices: ON_OFF_TOGGLE }],
 			callback: async (e) => {
 				const on = resolveOnOff(e.options.mode, self.state.soundMute)
@@ -113,7 +125,7 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		onscreen_mute: {
-			name: 'On-screen (OSD) mute — On / Off / Toggle',
+			name: 'Hide On-Screen Menu / Display',
 			options: [{ type: 'dropdown', id: 'mode', label: 'Action', default: 'toggle', choices: ON_OFF_TOGGLE }],
 			callback: async (e) => {
 				const on = resolveOnOff(e.options.mode, self.state.onscreenMute)
@@ -122,7 +134,7 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		freeze: {
-			name: 'Freeze — On / Off / Toggle',
+			name: 'Freeze Image',
 			options: [{ type: 'dropdown', id: 'mode', label: 'Action', default: 'toggle', choices: ON_OFF_TOGGLE }],
 			callback: async (e) => {
 				const on = resolveOnOff(e.options.mode, self.state.freeze)
@@ -131,7 +143,7 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		shutter: {
-			name: 'Shutter / lens mute — Open / Close / Toggle',
+			name: 'Shutter (blank the screen)',
 			options: [
 				{
 					type: 'dropdown',
@@ -139,8 +151,8 @@ export function UpdateActions(self: ModuleInstance): void {
 					label: 'Action',
 					default: 'toggle',
 					choices: [
-						{ id: 'close', label: 'Close' },
-						{ id: 'open', label: 'Open' },
+						{ id: 'close', label: 'Close (screen blank)' },
+						{ id: 'open', label: 'Open (show image)' },
 						{ id: 'toggle', label: 'Toggle' },
 					],
 				},
@@ -152,11 +164,11 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		picture_adjust: {
-			name: 'Picture — Adjust (brightness/contrast/…)',
+			name: 'Adjust Picture (brightness, contrast…)',
 			options: [
-				{ type: 'dropdown', id: 'item', label: 'Item', default: 0x00, choices: PICTURE_ITEMS },
-				{ type: 'dropdown', id: 'adjustType', label: 'Type', default: 'relative', choices: ADJUST_TYPE },
-				{ type: 'number', id: 'value', label: 'Value', default: 1, min: -32768, max: 32767 },
+				{ type: 'dropdown', id: 'item', label: 'Setting', default: 0x00, choices: PICTURE_ITEMS },
+				{ type: 'dropdown', id: 'adjustType', label: 'How', default: 'relative', choices: ADJUST_TYPE },
+				{ type: 'number', id: 'value', label: 'Amount', default: 1, min: -32768, max: 32767 },
 			],
 			callback: async (e) => {
 				await self.sendCommand(
@@ -166,24 +178,32 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		volume_adjust: {
-			name: 'Volume — Adjust',
+			name: 'Adjust Volume',
 			options: [
-				{ type: 'dropdown', id: 'adjustType', label: 'Type', default: 'relative', choices: ADJUST_TYPE },
-				{ type: 'number', id: 'value', label: 'Value', default: 1, min: -32768, max: 32767 },
+				{ type: 'dropdown', id: 'adjustType', label: 'How', default: 'relative', choices: ADJUST_TYPE },
+				{ type: 'number', id: 'value', label: 'Amount', default: 1, min: -32768, max: 32767 },
 			],
 			callback: async (e) => {
 				await self.sendCommand(cmd.volumeAdjust(e.options.value, e.options.adjustType === 'relative'), 'Volume adjust')
 			},
 		},
 		aspect: {
-			name: 'Aspect ratio',
+			name: 'Set Aspect Ratio',
 			options: [
-				{ type: 'dropdown', id: 'aspect', label: 'Aspect', default: 0x00, choices: ASPECT_CHOICES },
+				{
+					type: 'dropdown',
+					id: 'aspect',
+					label: 'Aspect ratio',
+					default: 0x00,
+					choices: ASPECT_CHOICES,
+					disableAutoExpression: true,
+				},
 				{
 					type: 'textinput',
 					id: 'custom',
 					label: 'Custom aspect code (hex)',
 					default: '',
+					isVisibleExpression: `$(options:aspect) == '${CUSTOM}'`,
 				},
 			],
 			callback: async (e) => {
@@ -191,14 +211,22 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		eco_mode: {
-			name: 'Eco / Lamp / Light mode',
+			name: 'Set Eco / Lamp Mode',
 			options: [
-				{ type: 'dropdown', id: 'eco', label: 'Mode', default: 0x00, choices: ECO_CHOICES },
+				{
+					type: 'dropdown',
+					id: 'eco',
+					label: 'Mode',
+					default: 0x00,
+					choices: ECO_CHOICES,
+					disableAutoExpression: true,
+				},
 				{
 					type: 'textinput',
 					id: 'custom',
 					label: 'Custom eco code (hex)',
 					default: '',
+					isVisibleExpression: `$(options:eco) == '${CUSTOM}'`,
 				},
 			],
 			callback: async (e) => {
@@ -206,33 +234,33 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		remote_key: {
-			name: 'Remote control key',
-			options: [{ type: 'dropdown', id: 'key', label: 'Key', default: 0x06, choices: REMOTE_KEYS }],
+			name: 'Press a Remote Button',
+			options: [{ type: 'dropdown', id: 'key', label: 'Button', default: 0x06, choices: REMOTE_KEYS }],
 			callback: async (e) => {
 				await self.sendCommand(cmd.remoteKey(e.options.key), 'Remote key')
 			},
 		},
 		lens_control: {
-			name: 'Lens — Drive (zoom/focus/shift)',
+			name: 'Lens — Zoom / Focus / Shift',
 			options: [
-				{ type: 'dropdown', id: 'target', label: 'Target', default: 0x00, choices: LENS_TARGETS },
-				{ type: 'dropdown', id: 'drive', label: 'Drive', default: 0x7f, choices: LENS_DRIVE },
+				{ type: 'dropdown', id: 'target', label: 'Lens part', default: 0x00, choices: LENS_TARGETS },
+				{ type: 'dropdown', id: 'drive', label: 'Move', default: 0x7f, choices: LENS_DRIVE },
 			],
 			callback: async (e) => {
 				await self.sendCommand(cmd.lensControl(e.options.target, e.options.drive), 'Lens control')
 			},
 		},
 		lens_control2: {
-			name: 'Lens — Move to value (absolute/relative)',
+			name: 'Lens — Move to Position',
 			options: [
 				{
 					type: 'dropdown',
 					id: 'target',
-					label: 'Target',
+					label: 'Lens part',
 					default: 0x00,
 					choices: [...LENS_TARGETS, { id: 0xff, label: 'Stop' }],
 				},
-				{ type: 'dropdown', id: 'adjustType', label: 'Type', default: 'relative', choices: ADJUST_TYPE },
+				{ type: 'dropdown', id: 'adjustType', label: 'How', default: 'relative', choices: ADJUST_TYPE },
 				{ type: 'number', id: 'value', label: 'Value', default: 0, min: -32768, max: 32767 },
 			],
 			callback: async (e) => {
@@ -243,56 +271,71 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		lens_memory: {
-			name: 'Lens memory — Move / Store / Reset',
-			options: [{ type: 'dropdown', id: 'op', label: 'Operation', default: 0x00, choices: LENS_MEM_OPS }],
+			name: 'Lens Memory — Recall / Save / Reset',
+			options: [{ type: 'dropdown', id: 'op', label: 'Action', default: 0x00, choices: LENS_MEM_OPS }],
 			callback: async (e) => {
 				await self.sendCommand(cmd.lensMemory(e.options.op), 'Lens memory')
 			},
 		},
 		ref_lens_memory: {
-			name: 'Reference lens memory — Move / Store / Reset',
-			options: [{ type: 'dropdown', id: 'op', label: 'Operation', default: 0x00, choices: LENS_MEM_OPS }],
+			name: 'Reference Lens Memory — Recall / Save / Reset',
+			options: [{ type: 'dropdown', id: 'op', label: 'Action', default: 0x00, choices: LENS_MEM_OPS }],
 			callback: async (e) => {
 				await self.sendCommand(cmd.refLensMemory(e.options.op), 'Reference lens memory')
 			},
 		},
 		lens_profile: {
-			name: 'Lens — Select reference profile',
+			name: 'Lens — Select Profile',
 			options: [{ type: 'dropdown', id: 'profile', label: 'Profile', default: 0x00, choices: LENS_PROFILES }],
 			callback: async (e) => {
 				await self.sendCommand(cmd.lensProfileSet(e.options.profile), 'Lens profile')
 			},
 		},
 		audio_select: {
-			name: 'Audio select',
+			name: 'Select Audio Source',
 			options: [
-				{ type: 'dropdown', id: 'input', label: 'Input terminal', default: 0x1a, choices: INPUT_CHOICES },
+				{
+					type: 'dropdown',
+					id: 'input',
+					label: 'For input',
+					default: 'hdmi1',
+					choices: INPUT_CHOICES,
+					disableAutoExpression: true,
+				},
 				{
 					type: 'textinput',
 					id: 'inputCustom',
 					label: 'Custom input code (hex)',
 					default: '',
+					isVisibleExpression: `$(options:input) == '${CUSTOM}'`,
 				},
-				{ type: 'dropdown', id: 'source', label: 'Audio source', default: 0x00, choices: AUDIO_SOURCES },
+				{
+					type: 'dropdown',
+					id: 'source',
+					label: 'Audio source',
+					default: 0x00,
+					choices: AUDIO_SOURCES,
+					disableAutoExpression: true,
+				},
 				{
 					type: 'textinput',
 					id: 'sourceCustom',
 					label: 'Custom audio source (hex)',
 					default: '',
+					isVisibleExpression: `$(options:source) == '${CUSTOM}'`,
 				},
 			],
 			callback: async (e) => {
+				const terminal =
+					e.options.input === CUSTOM ? parseHexByte(e.options.inputCustom) : (INPUT_CODES[e.options.input]?.[0] ?? 0)
 				await self.sendCommand(
-					cmd.audioSelectSet(
-						resolveCode(e.options.input, e.options.inputCustom),
-						resolveCode(e.options.source, e.options.sourceCustom),
-					),
+					cmd.audioSelectSet(terminal, resolveCode(e.options.source, e.options.sourceCustom)),
 					'Audio select',
 				)
 			},
 		},
 		edge_blending: {
-			name: 'Edge blending — On / Off',
+			name: 'Edge Blending On / Off',
 			options: [
 				{
 					type: 'dropdown',
@@ -310,36 +353,36 @@ export function UpdateActions(self: ModuleInstance): void {
 			},
 		},
 		pip_pbp: {
-			name: 'PIP / Picture-by-Picture — Set',
+			name: 'Picture-in-Picture / Side-by-Side',
 			options: [
 				{
 					type: 'dropdown',
 					id: 'target',
-					label: 'Target',
+					label: 'Set',
 					default: 0x00,
 					choices: [
-						{ id: 0x00, label: 'Mode (00h)' },
-						{ id: 0x01, label: 'Start position (01h)' },
-						{ id: 0x02, label: 'Sub input 1 (02h)' },
-						{ id: 0x09, label: 'Sub input 2 (09h)' },
-						{ id: 0x0a, label: 'Sub input 3 (0Ah)' },
+						{ id: 0x00, label: 'Mode (PIP vs side-by-side)' },
+						{ id: 0x01, label: 'Position' },
+						{ id: 0x02, label: 'Sub input 1' },
+						{ id: 0x09, label: 'Sub input 2' },
+						{ id: 0x0a, label: 'Sub input 3' },
 					],
 				},
-				{ type: 'number', id: 'value', label: 'Value (hex meaning depends on target)', default: 0, min: 0, max: 255 },
+				{ type: 'number', id: 'value', label: 'Value', default: 0, min: 0, max: 255 },
 			],
 			callback: async (e) => {
 				await self.sendCommand(cmd.pipPbpSet(e.options.target, e.options.value), 'PIP/PBP')
 			},
 		},
 		lan_name: {
-			name: 'Set LAN projector name',
-			options: [{ type: 'textinput', id: 'name', label: 'Name (max 16 chars)', default: '' }],
+			name: 'Set Projector Name',
+			options: [{ type: 'textinput', id: 'name', label: 'Name (max 16 characters)', default: '' }],
 			callback: async (e) => {
 				await self.sendCommand(cmd.lanProjectorNameSet(e.options.name), 'Set projector name')
 			},
 		},
 		send_raw: {
-			name: 'Send raw command (advanced)',
+			name: 'Advanced — Send Raw Command',
 			options: [
 				{
 					type: 'textinput',

@@ -1,87 +1,97 @@
 # companion-module-nec-projector
 
-Control and monitor **NEC / Sharp NEC projectors** from [Bitfocus Companion](https://bitfocus.io/companion) over their built‑in HTTP control interface.
+Control and monitor **NEC projectors** from [Bitfocus Companion](https://bitfocus.io/companion) over the network.
 
-This module speaks the NEC "Projector Control Command" binary protocol through the projector's web CGI (`IsapiExtPj.dll`) — the same protocol used over RS‑232C and TCP port 7142, but tunnelled over plain HTTP, so no extra hardware or open TCP socket is required. It exposes the full command set as actions and polls the projector for live feedback variables.
+No special hardware or cables are required — the module talks to the projector's built-in web
+control interface (`IsapiExtPj.dll`) using NEC's projector command protocol. Just enter the
+projector's IP address and you get power, input, mute, freeze, lens control and more, plus live
+status (power, input, lamp life, filter hours, errors…) that updates automatically.
 
-See [HELP.md](./companion/HELP.md) for in‑app help and [LICENSE](./LICENSE).
+> **Which projectors?** NEC **"NP" series** projectors with a network connection, including
+> newer models branded **Sharp NEC**. It does **not** control Sharp's own (non-NEC) projector
+> lines — those use a different protocol. See [Supported projectors](#supported-projectors).
+
+See [HELP.md](./companion/HELP.md) for plain-language setup help, and [LICENSE](./LICENSE).
 
 ## Features
 
-**Actions**
+**Buttons / actions**
 
 - Power on / off / toggle
-- Input / source select (named inputs + custom hex code for any model)
-- Picture, sound and on‑screen (OSD) mute — on / off / toggle
-- Freeze on / off / toggle
-- Shutter / lens mute (open / close / toggle)
-- Picture adjust (brightness, contrast, color, hue, sharpness — absolute or relative)
-- Volume adjust (absolute or relative)
-- Aspect ratio
-- Eco / Lamp / Light mode
-- Remote‑control key emulation (Menu, arrows, Enter, Source, Auto, Magnify, …)
-- Lens control (zoom / focus / shift drive, move‑to‑value, lens memory, reference lens memory, profile)
-- Audio select
-- Edge blending on / off
-- PIP / Picture‑by‑Picture
-- Set LAN projector name
-- Send raw command (advanced)
+- Select input — by name (HDMI 1, Computer 1, Video, DisplayPort…); the right code is detected
+  automatically per model, with a "Custom" option for anything unusual
+- Mute picture, mute sound, hide on-screen menu, freeze image, shutter (blank screen)
+- Adjust picture (brightness / contrast / color / hue / sharpness) and volume
+- Aspect ratio, eco / lamp mode, audio source
+- Remote-control buttons (menu, arrows, enter, source, auto, magnify…)
+- Lens: zoom / focus / shift, move-to-position, lens memory and profiles
+- Edge blending, Picture-in-Picture / side-by-side, set projector name, raw command (advanced)
 
-**Feedbacks** (boolean, with default styles)
+**Feedbacks** (colour your buttons by live state)
 
-- Power is on · Projector reachable · Active input is … · Picture / Sound / OSD mute on · Freeze on · Shutter closed · Projector has an error
+- Power on (green) / warming up (orange) / cooling down (blue) / off (red)
+- Connected, active input, picture muted, sound muted, menu hidden, image frozen,
+  shutter closed, projector has an error
 
-**Variables** (polled)
+**Variables** (updated by polling)
 
-- `connection`, `model`, `serial`, `mac`
-- `power`, `operation_status`, `content`
-- `input`, `input_code`
-- `picture_mute`, `sound_mute`, `onscreen_mute`, `freeze`, `shutter`
-- `lamp_remaining`, `lamp_hours`, `filter_hours`
-- `eco_mode`, `error_count`, `errors`
-- `sync_h`, `sync_v`
+- Connection, model, serial, MAC
+- Power, status, content/signal, active input
+- Picture mute, sound mute, on-screen mute, freeze, shutter
+- Lamp life remaining (%), lamp hours used, filter hours used
+- Eco mode, error count, error list, H/V sync frequency
 
-**Presets** for power, inputs, mutes/freeze/shutter, volume and status displays.
+**Presets** — ready-made buttons for Power, Inputs, Mute / Freeze, Volume and Status.
 
 ## Configuration
 
-| Field                     | Description                                                                             |
-| ------------------------- | --------------------------------------------------------------------------------------- |
-| Projector IP / hostname   | Address of the projector on the network                                                 |
-| HTTP port                 | Default `80`                                                                            |
-| HTTP user name / password | Only required if the projector has an HTTP control password set (leave blank otherwise) |
-| Poll projector for status | Enables periodic polling for feedback/variables                                         |
-| Poll interval (seconds)   | How often to poll (default `5`)                                                         |
+| Setting                   | What it's for                                                            |
+| ------------------------- | ------------------------------------------------------------------------ |
+| Projector IP address      | The projector's address on your network                                  |
+| HTTP port                 | Almost always `80`                                                       |
+| HTTP user name / password | Only if the projector's web page is password-protected (otherwise blank) |
+| Poll projector for status | Keeps buttons and variables up to date                                   |
+| Poll interval (seconds)   | How often to check (default `5`)                                         |
 
-### HTTP password protection
+If your projector has an HTTP control password, the module logs in automatically (NEC's
+challenge-response scheme) and re-authenticates if the session drops.
 
-If the projector's web server has a password configured, enter the user name and password in the connection settings. The module performs NEC's challenge‑response logon automatically (`?A=Cookie` → `?A=Rand` → `md5(nonce + password)` → `?A=Logon`) and re‑authenticates if the session expires. The projector limits passwords to 10 characters.
+## Supported projectors
 
-## Compatibility
-
-This module works with NEC / Sharp NEC projectors that have a wired (or wireless) LAN connection and the classic **"Projector LAN Control"** web interface (`IsapiExtPj.dll`). That covers essentially the entire NEC **NP** projector line from ~2014–2020, including:
+Works with NEC / Sharp NEC **NP-series** projectors that have a wired (or wireless) LAN
+connection and the classic "Projector LAN Control" web page. This covers essentially the whole
+NEC NP line from ~2014 onward, including:
 
 - **NP4100 / NP4100W**
-- **M series** — NP‑M230X/260X/260W/271W/282X/283X/300W/300X/302W/311X/322X/323W/332XS/333XS/350X/352WS/353WS/361X/362W/363X/402W/403W/403X/420X …
-- **ME series** — NP‑ME270X/301W/301X/331W/360X/361X/401W/401X …
-- **P / PE series** — NP‑P350W/P420X/P451W/P501X/P502H/P525UL/P554U/P603X/P605UL, NP‑PE401H/PE501X/PE523X …
-- **PA series** — NP‑PA500U/PA550W/PA600X/PA621U/PA622U/PA653UL/PA703W/PA722X/PA803UL/PA853W/PA903X/PA1004UL …
-- **PH series** — NP‑PH1000U/PH1202HL/PH1400U/PH2601QL/PH3501QL …
-- **PX series** — NP‑PX602UL/PX700W/PX750U/PX800X/PX803UL/PX1004UL/PX1005QL/PX2000UL …
-- **U / UM series** — NP‑U300X/U310W/U321H, NP‑UM280X/UM301W/UM330W/UM351W/UM361X …
-- **V / VE series** — NP‑V260X/V300X/V302H/V311X/V332W, NP‑VE280/VE281/VE303 …
+- **M series** — e.g. NP‑M230X/260X/260W/271W/282X/283X/300W/300X/302W/311X/322X/323W/332XS/333XS/350X/352WS/353WS/361X/362W/363X/402W/403W/403X/420X
+- **ME series** — e.g. NP‑ME270X/301W/301X/331W/360X/361X/401W/401X
+- **P / PE series** — e.g. NP‑P350W/P420X/P451W/P501X/P502H/P525UL/P554U/P603X/P605UL, NP‑PE401H/PE501X/PE523X
+- **PA series** — e.g. NP‑PA500U/PA550W/PA600X/PA621U/PA622U/PA653UL/PA703W/PA722X/PA803UL/PA853W/PA903X/PA1004UL
+- **PH series** — e.g. NP‑PH1000U/PH1202HL/PH1400U/PH2601QL/PH3501QL
+- **PX series** — e.g. NP‑PX602UL/PX700W/PX750U/PX800X/PX803UL/PX1004UL/PX1005QL/PX2000UL
+- **U / UM series** — e.g. NP‑U300X/U310W/U321H, NP‑UM280X/UM301W/UM330W/UM351W/UM361X
+- **V / VE series** — e.g. NP‑V260X/V300X/V302H/V311X/V332W, NP‑VE280/VE281/VE303
 
-> The authoritative model list is in NEC's _Projector Control Command Reference Manual_ and its _Appendixes_.
+The full official list is in NEC's _Projector Control Command Reference Manual_ and its
+_Appendixes_.
 
-### Compatibility notes
+### Good to know
 
-- **Command support varies by model.** Unsupported commands (e.g. lens/shutter on models without a powered lens, or cover status on some models) simply return a NACK and are ignored — they will not break the connection.
-- **Input / aspect / eco codes vary by model family.** For example HDMI 1 is `1Ah` on older PA/PX/PH but `A1h` on M/ME and newer PA models. The named dropdowns cover the common cases; every code‑based action also has a **Custom (hex)** option so any model is supported. The active‑input readback is decoded automatically.
-- **Powering on from standby over LAN** requires the projector's _Standby Mode_ to allow network commands (e.g. _Network Standby_ / _Normal_). In a deep power‑saving standby some models will not respond until woken by other means.
-- Newer Sharp/NEC laser models with a redesigned web UI may not expose `IsapiExtPj.dll`; this module targets the classic interface.
+- **Inputs auto-detect.** Input codes differ between projector families (for example HDMI 1 is
+  `1Ah` on many models but `A1h` on others). You just pick "HDMI 1" — the module tries the
+  standard code, falls back to the alternate if the projector rejects it, and remembers which
+  one works. Use **Custom** for anything not listed.
+- **Powering on from standby over the network** needs the projector's _Standby Mode_ set to
+  allow network commands (e.g. _Network Standby_ / _Normal_). In a deep power-saving standby,
+  some models won't respond until woken another way.
+- **Not every command exists on every model** (e.g. lens, shutter, edge blending). Unsupported
+  commands are safely ignored and won't break the connection.
+- **Not Sharp's own projectors.** This module is for NEC / Sharp NEC NP-series projectors. Sharp's
+  legacy (non-NEC) projector lines use a different control protocol and are not supported.
 
 Tested against an **NEC NP‑PA550W**.
 
 ## Development
 
-`yarn build` compiles the module (output in `dist/`). `yarn dev` runs the TypeScript compiler in watch mode. `yarn lint` checks formatting and lint rules.
+`yarn build` compiles the module, `yarn dev` watches for changes, `yarn lint` checks
+formatting/lint, and `yarn package` builds the installable bundle.

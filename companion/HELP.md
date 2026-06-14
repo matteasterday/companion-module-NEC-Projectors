@@ -1,58 +1,59 @@
-## NEC / Sharp NEC Projector
+## NEC Projector
 
-Control and monitor NEC / Sharp NEC projectors over HTTP using the projector's built‑in
-`IsapiExtPj.dll` control interface (the "Projector LAN Control" web page). No extra hardware
-or RS‑232 cabling is required — only a network connection to the projector.
+Control and monitor an NEC projector from Companion over your network — no extra hardware
+or cables needed, just the projector's IP address.
 
-### Setup
+This works with NEC projectors (the **"NP" series**, including models now branded
+**Sharp NEC**) that have a network connection and the built-in web control page. It does
+**not** control Sharp's own (non-NEC) projectors — those use a different system.
 
-1. Connect the projector to your network and note its IP address.
-2. Add this connection and enter the **IP address**. The **HTTP port** is normally `80`.
-3. If the projector's web server is password protected, enter the **HTTP user name** and
-   **password**. Otherwise leave them blank.
-4. Leave **polling** enabled so feedbacks and variables stay up to date.
+### Set up
 
-### Powering on from standby
+1. Connect the projector to the same network as your Companion computer, and find its IP
+   address (shown in the projector's network menu).
+2. Add this connection and type in the **IP address**. Leave the **port** at `80`.
+3. If the projector's web page asks for a password, enter the **user name** and
+   **password**. If it doesn't, leave them blank.
+4. That's it — buttons and status start working right away.
 
-To turn the projector **on** over the network, its _Standby Mode_ must be set to a mode that
-accepts LAN commands (typically **Network Standby** or **Normal**). In a deep power‑saving
-standby the projector may not respond to a power‑on command.
+### Turning the projector on over the network
 
-### Inputs, aspect and eco codes
+Some projectors ignore a network "power on" while in deep standby. If power-on doesn't
+work, set the projector's **Standby Mode** to **Network Standby** (or **Normal**) in its
+own menu.
 
-NEC uses **different numeric codes per projector family** for inputs, aspect ratios and eco
-modes. The dropdowns list the common values; if your model uses a different code, choose
-**Custom (enter hex code below)** and type the hex value (e.g. `1A`). Common input codes:
+### Choosing an input
 
-| Input            | Code                           | Notes                   |
-| ---------------- | ------------------------------ | ----------------------- |
-| Computer 1 / RGB | `01`                           |                         |
-| Computer 2       | `02`                           |                         |
-| Video            | `06`                           |                         |
-| S‑Video          | `0B`                           |                         |
-| HDMI 1           | `1A`                           | older PA / PX / PH / PE |
-| HDMI 1           | `A1`                           | M / ME / newer PA       |
-| DisplayPort      | `1B` (older PA) / `A6` (newer) |                         |
-| Viewer / USB‑A   | `1F`                           |                         |
-| LAN / Network    | `20`                           |                         |
-| HDBaseT          | `BF`                           |                         |
-| SDI 1–4          | `C4`–`C7`                      |                         |
+Just pick the input by name (HDMI 1, Computer 1, Video…). The module automatically works
+out the exact code your projector uses and remembers it. Only if you have an unusual model
+and an input won't switch, pick **Custom** and enter the code from your projector's manual.
 
-The **active input** is decoded automatically and shown in the `input` variable.
+> Tip: "Computer 1/2/3" are the analog **VGA** (15-pin) inputs.
 
-### Feedback & variables
+### Lamp life
 
-With polling enabled the module reads power state, active input, mute/freeze status, lamp life
-and hours, filter hours, eco mode, errors and sync frequency. Use the boolean **feedbacks** to
-colour buttons (e.g. green when on, red when muted) and the **variables** (e.g.
-`$(NEC:lamp_remaining)`, `$(NEC:input)`) in button text.
+- **Lamp life remaining** = how much lamp life is **left** (100% = new, 0% = replace soon).
+- **Lamp hours used** = how many hours the lamp has run.
 
-### Troubleshooting
+Both are available as ready-made status buttons and as variables.
 
-- **Connection failure** – check the IP/port and that the projector's HTTP server / LAN control
-  is enabled. Try opening `http://<projector-ip>/` in a browser.
-- **A command does nothing** – not every command is supported on every model; unsupported
-  commands are ignored. Some commands (mutes, input switch, lens) only work while the projector
-  is powered on.
-- **Wrong input is switched** – your model may use a different input code; use the **Custom
-  (hex)** option (see the table above, or your model's command reference).
+### Buttons, colours and status
+
+Ready-made buttons are on the **Presets** tab — Power, Inputs, Mute / Freeze, Volume and
+Status. The power buttons change colour with the projector:
+
+- **Green** = on
+- **Orange** = warming up
+- **Blue** = cooling down
+- **Red** = off
+
+Status buttons show live information (active input, lamp life, lamp hours, filter hours,
+eco mode, errors and more).
+
+### If something isn't working
+
+- **"Connection failure"** — double-check the IP address and that the projector is on the
+  network. Try opening `http://<projector-ip>/` in a web browser.
+- **A button does nothing** — some commands only work while the projector is on, and a few
+  features (lens, shutter, edge blending) only exist on certain models and are safely
+  ignored on others.

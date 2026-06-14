@@ -43,6 +43,8 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 	private pollInFlight = false
 	private staticFetched = false
 	private destroyed = false
+	/** Remembers which candidate code worked for each logical input on this projector. */
+	private inputWinners = new Map<string, number>()
 
 	constructor(internal: unknown) {
 		super(internal)
@@ -103,6 +105,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		this.stopTimers()
 		this.state = blankState()
 		this.staticFetched = false
+		this.inputWinners.clear()
 
 		if (!this.config.host) {
 			this.updateStatus(InstanceStatus.BadConfig, 'Set the projector IP address')
@@ -203,6 +206,41 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		}
 	}
 
+	/**
+	 * Switch input by logical name (e.g. "hdmi1"), trying the candidate hex codes and
+	 * remembering which one the projector accepts so later switches go straight to it.
+	 * This adapts to per-model code differences (e.g. HDMI 1Ah vs A1h) automatically.
+	 */
+	async selectInput(logical: string, codes: number[]): Promise<void> {
+		if (!this.client || codes.length === 0) return
+		const useCache = logical !== 'custom'
+		const cached = useCache ? this.inputWinners.get(logical) : undefined
+		const order = cached !== undefined ? [cached, ...codes.filter((c) => c !== cached)] : codes
+		try {
+			for (const code of order) {
+				const res = await this.client.send(cmd.inputSwitch(code))
+				if (res.ok) {
+					if (useCache) this.inputWinners.set(logical, code)
+					this.markReachable()
+					this.scheduleRefresh()
+					return
+				}
+				// Only try the next candidate if this code was rejected as invalid.
+				if (res.err1 !== 0x01) {
+					if (res.err1 === 0x02 && res.err2 === 0x0d) this.log('debug', 'Input: projector power is off')
+					else this.log('warn', `Input select failed: ${res.errorText ?? 'NACK'}`)
+					this.markReachable()
+					this.scheduleRefresh()
+					return
+				}
+			}
+			this.log('warn', `Input select: projector did not accept any known code for "${logical}"`)
+			this.markReachable()
+		} catch (e) {
+			this.handleTransportError(e, 'Input select')
+		}
+	}
+
 	/** Optimistically merge a state change so buttons feel responsive before the poll. */
 	applyOptimistic(partial: Partial<ProjectorState>): void {
 		Object.assign(this.state, partial)
@@ -236,6 +274,8 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		this.checkFeedbacks(
 			'connected',
 			'power_on',
+			'power_warming',
+			'power_cooling',
 			'input_active',
 			'picture_mute',
 			'sound_mute',
