@@ -7,8 +7,8 @@
 	"description": "Control and monitor NEC projectors over HTTP (IsapiExtPj.dll control-command protocol). Power, input, mutes, freeze, shutter, lens, eco mode and more, with polled feedback variables.",
 	"version": "1.0.0",
 	"license": "MIT",
-	"repository": "git+https://github.com/matteasterday/companion-module-NEC-Projectors.git",
-	"bugs": "https://github.com/matteasterday/companion-module-NEC-Projectors/issues",
+	"repository": "git+https://github.com/bitfocus/companion-module-nec-projectors.git",
+	"bugs": "https://github.com/bitfocus/companion-module-nec-projectors/issues",
 	"maintainers": [
 		{
 			"name": "Matthew Easterday",
