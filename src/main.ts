@@ -190,8 +190,24 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 
 	// --------------------------------------------------------------- commands
 
+	private commandsInFlight = new Set<string>()
+
 	/** Send a control command; refresh state shortly after. Used by all actions. */
 	async sendCommand(bytes: number[], label: string): Promise<void> {
+		if (!this.client) return
+		if (this.commandsInFlight.has(label)) {
+			this.log('debug', `${label}: already in progress, extra press ignored`)
+			return
+		}
+		this.commandsInFlight.add(label)
+		try {
+			await this.sendCommandOnce(bytes, label)
+		} finally {
+			this.commandsInFlight.delete(label)
+		}
+	}
+
+	private async sendCommandOnce(bytes: number[], label: string): Promise<void> {
 		if (!this.client) return
 		try {
 			const res = await this.client.send(bytes)
