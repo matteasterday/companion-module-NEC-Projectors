@@ -7,6 +7,7 @@ export type FeedbacksSchema = {
 	power_on: { type: 'boolean'; options: Record<string, never> }
 	power_warming: { type: 'boolean'; options: Record<string, never> }
 	power_cooling: { type: 'boolean'; options: Record<string, never> }
+	power_off_locked: { type: 'boolean'; options: Record<string, never> }
 	input_active: { type: 'boolean'; options: { input: string } }
 	picture_mute: { type: 'boolean'; options: Record<string, never> }
 	sound_mute: { type: 'boolean'; options: Record<string, never> }
@@ -46,6 +47,13 @@ export function UpdateFeedbacks(self: ModuleInstance): void {
 			defaultStyle: { bgcolor: blue, color: white },
 			options: [],
 			callback: () => isCooling(self.state.operationStatusCode),
+		},
+		power_off_locked: {
+			name: 'Power off is locked out (lamp just came on)',
+			type: 'boolean',
+			defaultStyle: { bgcolor: orange, color: black },
+			options: [],
+			callback: () => self.state.powerOffLockedUntil > Date.now(),
 		},
 		connected: {
 			name: 'Connected to projector',

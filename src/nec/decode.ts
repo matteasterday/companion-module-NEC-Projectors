@@ -46,6 +46,8 @@ export interface ProjectorState {
 	lampMoving: boolean
 	syncH: string
 	syncV: string
+	/** Until this time (ms) the projector will refuse a power off because it only just reached Power On. 0 when not locked. */
+	powerOffLockedUntil: number
 }
 
 /** A fresh, "unknown" state. */
@@ -55,6 +57,7 @@ export function blankState(): ProjectorState {
 		powered: false,
 		operationStatus: 'Unknown',
 		operationStatusCode: -1,
+		powerOffLockedUntil: 0,
 		content: '',
 		inputName: '',
 		inputType1: 0,

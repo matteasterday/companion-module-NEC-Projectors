@@ -7,6 +7,7 @@ import { UpdateFeedbacks, type FeedbacksSchema } from './feedbacks.js'
 import { UpdatePresets } from './presets.js'
 import { NecClient, NecTransportError, type NecClientOptions } from './nec/client.js'
 import * as cmd from './nec/commands.js'
+import { isCooling, isWarming } from './nec/constants.js'
 import {
 	blankState,
 	decodeBasicInfo,
@@ -140,7 +141,9 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		this.pollInFlight = true
 		try {
 			if (!this.staticFetched) await this.fetchStatic()
+			const before = this.state.operationStatusCode
 			await this.apply(cmd.reqBasicInfo(), decodeBasicInfo)
+			this.trackPowerOffLockout(before, this.state.operationStatusCode)
 			await this.apply(cmd.reqLampInfo(0x00, 0x04), decodeLamp)
 			await this.apply(cmd.reqLampInfo(0x00, 0x01), decodeLamp)
 			await this.apply(cmd.reqFilterInfo(), decodeFilter)
@@ -253,6 +256,33 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		this.refreshTimer = setTimeout(() => void this.poll(), 700)
 	}
 
+	// --------------------------------------------------------------- power off lockout
+
+	/**
+	 * Projectors refuse a power off for a while after the lamp reaches Power On.
+	 * Start the lockout window the moment the status changes to Power On, and clear
+	 * it whenever the projector is no longer on.
+	 */
+	private trackPowerOffLockout(before: number, after: number): void {
+		const POWER_ON = 0x04
+		if (after === POWER_ON && before !== POWER_ON && before !== -1) {
+			const seconds = Math.max(0, this.config.powerOffLockout ?? 90)
+			this.state.powerOffLockedUntil = seconds > 0 ? Date.now() + seconds * 1000 : 0
+			if (seconds > 0) this.log('debug', `Lamp reached Power On; power off locked out for ${seconds}s`)
+		} else if (after !== POWER_ON && !isWarming(after)) {
+			this.state.powerOffLockedUntil = 0
+		}
+	}
+
+	/** Why a power off would be refused right now, or null if it can be sent. */
+	powerOffRefusal(): string | null {
+		if (isWarming(this.state.operationStatusCode)) return 'projector is still warming up'
+		if (isCooling(this.state.operationStatusCode)) return 'projector is already cooling down'
+		const left = this.state.powerOffLockedUntil - Date.now()
+		if (left > 0) return `lamp only just came on, projector will accept power off in ${Math.ceil(left / 1000)}s`
+		return null
+	}
+
 	// --------------------------------------------------------------- helpers
 
 	private markReachable(): void {
@@ -276,6 +306,7 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 			'power_on',
 			'power_warming',
 			'power_cooling',
+			'power_off_locked',
 			'input_active',
 			'picture_mute',
 			'sound_mute',

@@ -75,6 +75,13 @@ export function UpdateActions(self: ModuleInstance): void {
 			options: [{ type: 'dropdown', id: 'mode', label: 'Action', default: 'on', choices: ON_OFF_TOGGLE }],
 			callback: async (e) => {
 				const on = resolveOnOff(e.options.mode, self.state.powered)
+				if (!on) {
+					const reason = self.powerOffRefusal()
+					if (reason) {
+						self.log('warn', `Power Off refused: ${reason}`)
+						return
+					}
+				}
 				self.applyOptimistic({ powered: on })
 				await self.sendCommand(on ? cmd.powerOn() : cmd.powerOff(), `Power ${on ? 'On' : 'Off'}`)
 			},

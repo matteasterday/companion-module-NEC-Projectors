@@ -7,6 +7,7 @@ export type ModuleConfig = {
 	password: string
 	polling: boolean
 	pollInterval: number
+	powerOffLockout: number
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {
@@ -67,6 +68,17 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			default: 5,
 			min: 1,
 			max: 600,
+		},
+		{
+			type: 'number',
+			id: 'powerOffLockout',
+			label: 'Power off lockout after power on (seconds)',
+			width: 4,
+			default: 90,
+			min: 0,
+			max: 600,
+			tooltip:
+				'Projectors refuse a power off for a while after the lamp reaches Power On. During this window the module refuses the command instead of sending one the projector will drop, and publishes power_off_locked / power_off_in so buttons can show it. 0 disables.',
 		},
 	]
 }
