@@ -225,7 +225,14 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 			this.markReachable()
 			this.scheduleRefresh()
 		} catch (e) {
-			this.noteError(`${label}: ${e instanceof Error ? e.message : String(e)}`)
+			const msg = e instanceof Error ? e.message : String(e)
+			this.noteError(`${label}: ${msg}`)
+			if (/not answering/i.test(msg)) {
+				this.log(
+					'warn',
+					`${label}: no reply from the projector. If it is in standby, set Standby Mode to Network Standby so it can be woken over LAN.`,
+				)
+			}
 			this.handleTransportError(e, label)
 		}
 	}
@@ -311,17 +318,16 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 
 	/** Why a power on would be refused right now, or null if it can be sent. */
 	powerOnRefusal(): string | null {
-		if (isCooling(this.state.operationStatusCode))
-			return 'projector is cooling down and will accept power on once it reaches standby'
+		if (isCooling(this.state.operationStatusCode)) return 'still cooling down'
 		return null
 	}
 
 	/** Why a power off would be refused right now, or null if it can be sent. */
 	powerOffRefusal(): string | null {
-		if (isWarming(this.state.operationStatusCode)) return 'projector is still warming up'
-		if (isCooling(this.state.operationStatusCode)) return 'projector is already cooling down'
+		if (isWarming(this.state.operationStatusCode)) return 'still warming up'
+		if (isCooling(this.state.operationStatusCode)) return 'already cooling down'
 		const left = this.state.powerOffLockedUntil - Date.now()
-		if (left > 0) return `lamp only just came on, projector will accept power off in ${Math.ceil(left / 1000)}s`
+		if (left > 0) return `too soon after turning on, ${Math.ceil(left / 1000)}s to go`
 		return null
 	}
 

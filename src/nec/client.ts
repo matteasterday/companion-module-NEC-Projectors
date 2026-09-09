@@ -75,9 +75,7 @@ export class NecClient {
 	private async http(query: string): Promise<string> {
 		const busy = this.busyFor()
 		if (busy > 0) {
-			throw new NecTransportError(
-				`Projector's web server is overloaded (HTTP 503); leaving it alone for ${Math.ceil(busy / 1000)}s`,
-			)
+			throw new NecTransportError(`web server overloaded, waiting ${Math.ceil(busy / 1000)}s`)
 		}
 		const gap = MIN_GAP_MS - (Date.now() - this.lastRequestAt)
 		if (gap > 0) await new Promise((resolve) => setTimeout(resolve, gap))
@@ -93,19 +91,13 @@ export class NecClient {
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e)
 			const timedOut = (e instanceof Error && e.name === 'TimeoutError') || /abort|timeout/i.test(msg)
-			throw new NecTransportError(
-				timedOut
-					? 'Projector is not answering on the network. If it is in standby, set its Standby Mode to Network Standby so it can be woken over LAN.'
-					: msg,
-			)
+			throw new NecTransportError(timedOut ? 'not answering on the network' : msg)
 		}
 		this.storeCookies(res)
 		if (res.status === 503 || res.status === 502) {
 			this.busyUntil = Date.now() + BUSY_BACKOFF_MS
 			this.authed = false
-			throw new NecTransportError(
-				`Projector's web server is overloaded (HTTP ${res.status}); leaving it alone for ${BUSY_BACKOFF_MS / 1000}s`,
-			)
+			throw new NecTransportError(`web server overloaded (HTTP ${res.status}), waiting ${BUSY_BACKOFF_MS / 1000}s`)
 		}
 		if (!res.ok) throw new NecTransportError(`HTTP ${res.status}`)
 		return await res.text()

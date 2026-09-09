@@ -1,6 +1,6 @@
 {
 	"name": "nec-projectors",
-	"version": "1.1.4",
+	"version": "1.1.5",
 	"main": "dist/main.js",
 	"type": "module",
 	"description": "Control and monitor NEC projectors over their HTTP control interface (IsapiExtPj.dll binary command protocol), with polled feedback variables.",
