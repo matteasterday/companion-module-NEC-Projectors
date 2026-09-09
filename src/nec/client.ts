@@ -61,7 +61,13 @@ export class NecClient {
 				signal: AbortSignal.timeout(this.opts.timeoutMs),
 			})
 		} catch (e) {
-			throw new NecTransportError(e instanceof Error ? e.message : String(e))
+			const msg = e instanceof Error ? e.message : String(e)
+			const timedOut = (e instanceof Error && e.name === 'TimeoutError') || /abort|timeout/i.test(msg)
+			throw new NecTransportError(
+				timedOut
+					? 'Projector is not answering on the network. If it is in standby, set its Standby Mode to Network Standby so it can be woken over LAN.'
+					: msg,
+			)
 		}
 		this.storeCookies(res)
 		if (!res.ok) throw new NecTransportError(`HTTP ${res.status}`)
