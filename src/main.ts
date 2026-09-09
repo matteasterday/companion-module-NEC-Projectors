@@ -274,6 +274,13 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		}
 	}
 
+	/** Why a power on would be refused right now, or null if it can be sent. */
+	powerOnRefusal(): string | null {
+		if (isCooling(this.state.operationStatusCode))
+			return 'projector is cooling down and will accept power on once it reaches standby'
+		return null
+	}
+
 	/** Why a power off would be refused right now, or null if it can be sent. */
 	powerOffRefusal(): string | null {
 		if (isWarming(this.state.operationStatusCode)) return 'projector is still warming up'
