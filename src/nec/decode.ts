@@ -48,6 +48,9 @@ export interface ProjectorState {
 	syncV: string
 	/** Until this time (ms) the projector will refuse a power off because it only just reached Power On. 0 when not locked. */
 	powerOffLockedUntil: number
+	/** Text of the last command the projector rejected or that could not be sent, and when. Empty when the last command succeeded. */
+	lastError: string
+	lastErrorAt: number
 }
 
 /** A fresh, "unknown" state. */
@@ -58,6 +61,8 @@ export function blankState(): ProjectorState {
 		operationStatus: 'Unknown',
 		operationStatusCode: -1,
 		powerOffLockedUntil: 0,
+		lastError: '',
+		lastErrorAt: 0,
 		content: '',
 		inputName: '',
 		inputType1: 0,

@@ -78,6 +78,7 @@ export function UpdateActions(self: ModuleInstance): void {
 				const reason = on ? self.powerOnRefusal() : self.powerOffRefusal()
 				if (reason) {
 					self.log('warn', `Power ${on ? 'On' : 'Off'} refused: ${reason}`)
+					self.noteError(`Power ${on ? 'On' : 'Off'} refused: ${reason}`)
 					return
 				}
 				self.applyOptimistic({ powered: on })

@@ -198,13 +198,18 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 			if (!res.ok) {
 				if (res.err1 === 0x02 && res.err2 === 0x0d) {
 					this.log('debug', `${label}: ignored — projector power is off`)
+					this.noteError(`${label}: projector power is off`)
 				} else {
 					this.log('warn', `${label} failed: ${res.errorText ?? 'NACK'}`)
+					this.noteError(`${label} failed: ${res.errorText ?? 'NACK'}`)
 				}
+			} else {
+				this.clearError()
 			}
 			this.markReachable()
 			this.scheduleRefresh()
 		} catch (e) {
+			this.noteError(`${label}: ${e instanceof Error ? e.message : String(e)}`)
 			this.handleTransportError(e, label)
 		}
 	}
@@ -272,6 +277,20 @@ export default class ModuleInstance extends InstanceBase<ModuleSchema> {
 		} else if (after !== POWER_ON && !isWarming(after)) {
 			this.state.powerOffLockedUntil = 0
 		}
+	}
+
+	/** Record a refusal so buttons and the web remote can show it; published on the next poll or immediately. */
+	noteError(text: string): void {
+		this.state.lastError = text
+		this.state.lastErrorAt = Date.now()
+		this.publish()
+	}
+
+	clearError(): void {
+		if (!this.state.lastError) return
+		this.state.lastError = ''
+		this.state.lastErrorAt = 0
+		this.publish()
 	}
 
 	/** Why a power on would be refused right now, or null if it can be sent. */
